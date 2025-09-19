@@ -27,43 +27,6 @@ st.title("Diagnóstico de Diabetes basado en IA")
 st.markdown("Este aplicativo usa una red neuronal para predecir si una persona tiene diabetes y luego genera recomendaciones personalizadas con la ayuda de un modelo de lenguaje avanzado.")
 st.markdown("---")
 
-def get_user_input():
-    """Recopila los parámetros de entrada del usuario."""
-    
-    st.markdown("___")
-    st.markdown("Por favor, ingrese los datos del paciente para realizar el diagnóstico.")
-
-    # Interfaz para la entrada de datos
-    st.header("📝 Parámetros del Paciente")
-    with st.form("input_form"):
-        col1, col2 = st.columns(2)
-        with col1:
-            pregnancies = st.slider('Número de Embarazos', 0, 17, 3)
-            glucose = st.slider('Nivel de Glucosa (mg/dL)', 0, 200, 117)
-            diastolic = st.slider('Presión Sanguínea Diastólica (mmHg)', 0, 122, 72)
-            triceps = st.slider('Grosor del Pliegue Cutáneo del Tríceps (mm)', 0, 99, 23)
-        with col2:
-            insulin = st.slider('Nivel de Insulina (mu U/ml)', 0, 846, 30)
-            bmi = st.slider('Índice de Masa Corporal (BMI)', 0.0, 67.1, 32.0)
-            dpf = st.slider('Función de Pedigree de Diabetes', 0.078, 2.42, 0.3725)
-            age = st.slider('Edad', 21, 88, 29)
-        
-        submitted = st.button('🚀 Realizar Predicción y Obtener Recomendaciones')
-        
-    data = {
-        'Número de Embarazos': pregnancies,
-        'Nivel de Glucosa': glucose,
-        'Presión Sanguínea Diastólica': diastolic,
-        'Grosor del Pliegue Cutáneo': triceps,
-        'Nivel de Insulina': insulin,
-        'BMI': bmi,
-        'Función de Pedigree': dpf,
-        'Edad': age
-    }
-    return data
-
-
-
 # Configura tu clave de API de OpenAI
 #openai.api_key = os.getenv("OPENAI_API_KEY")
 
@@ -76,7 +39,6 @@ if not openai_api_key:
 else:
     # Create an OpenAI client.
     client = OpenAI(api_key=openai_api_key)
-
 
     # Create a session state variable to store the chat messages. This ensures that the
     # messages persist across reruns.
