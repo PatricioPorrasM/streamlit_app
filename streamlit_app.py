@@ -9,6 +9,18 @@ st.set_page_config(
     layout="wide"
 )
 
+# --- Estilo CSS para cambiar el color de fondo ---
+st.markdown(
+    """
+    <style>
+    .stApp {
+        background-color: #87CEEB; /* Celeste cielo */
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 # Carga el modelo de Keras previamente entrenado
 @st.cache_resource
 def load_model():
