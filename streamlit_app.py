@@ -35,18 +35,21 @@ def get_user_input():
 
     # Interfaz para la entrada de datos
     st.header("📝 Parámetros del Paciente")
-    col1, col2 = st.columns(2)
-    with col1:
-        pregnancies = st.slider('Número de Embarazos', 0, 17, 3)
-        glucose = st.slider('Nivel de Glucosa (mg/dL)', 0, 200, 117)
-        diastolic = st.slider('Presión Sanguínea Diastólica (mmHg)', 0, 122, 72)
-        triceps = st.slider('Grosor del Pliegue Cutáneo del Tríceps (mm)', 0, 99, 23)
-    with col2:
-        insulin = st.slider('Nivel de Insulina (mu U/ml)', 0, 846, 30)
-        bmi = st.slider('Índice de Masa Corporal (BMI)', 0.0, 67.1, 32.0)
-        dpf = st.slider('Función de Pedigree de Diabetes', 0.078, 2.42, 0.3725)
-        age = st.slider('Edad', 21, 88, 29)
-    
+    with st.form("input_form"):
+        col1, col2 = st.columns(2)
+        with col1:
+            pregnancies = st.slider('Número de Embarazos', 0, 17, 3)
+            glucose = st.slider('Nivel de Glucosa (mg/dL)', 0, 200, 117)
+            diastolic = st.slider('Presión Sanguínea Diastólica (mmHg)', 0, 122, 72)
+            triceps = st.slider('Grosor del Pliegue Cutáneo del Tríceps (mm)', 0, 99, 23)
+        with col2:
+            insulin = st.slider('Nivel de Insulina (mu U/ml)', 0, 846, 30)
+            bmi = st.slider('Índice de Masa Corporal (BMI)', 0.0, 67.1, 32.0)
+            dpf = st.slider('Función de Pedigree de Diabetes', 0.078, 2.42, 0.3725)
+            age = st.slider('Edad', 21, 88, 29)
+        
+        submitted = st.button('🚀 Realizar Predicción y Obtener Recomendaciones')
+        
     data = {
         'Número de Embarazos': pregnancies,
         'Nivel de Glucosa': glucose,
@@ -86,14 +89,50 @@ else:
             st.markdown(message["content"])
 
 
-    # Obtiene los datos del usuario antes de la lógica del botón
-    input_data = get_user_input()
-    st.markdown("---")
+    # **Formulario principal de la aplicación**
+    # El formulario agrupa los inputs y el botón, haciendo que se procesen juntos al enviar.
+    with st.form(key="diabetes_form"):
+        st.header("📝 Parámetros del Paciente")
+        st.markdown("Ingrese los datos del paciente para realizar el diagnóstico.")
 
-    # **Botón de Predicción**
-    if st.button('🚀 Realizar Predicción y Obtener Recomendaciones'):
+        # Uso de columnas para organizar los inputs
+        col1, col2, col3, col4 = st.columns(4)
+
+        with col1:
+            pregnancies = st.slider('Número de Embarazos', 0, 17, 3, key='p')
+            diastolic = st.slider('Presión Sanguínea Diastólica (mmHg)', 0, 122, 72, key='d')
+
+        with col2:
+            glucose = st.slider('Nivel de Glucosa (mg/dL)', 0, 200, 117, key='g')
+            triceps = st.slider('Grosor del Pliegue Cutáneo del Tríceps (mm)', 0, 99, 23, key='t')
+
+        with col3:
+            insulin = st.slider('Nivel de Insulina (mu U/ml)', 0, 846, 30, key='i')
+            bmi = st.slider('Índice de Masa Corporal (BMI)', 0.0, 67.1, 32.0, key='b')
+        
+        with col4:
+            dpf = st.slider('Función de Pedigree de Diabetes', 0.078, 2.42, 0.3725, key='dpf')
+            age = st.slider('Edad', 21, 88, 29, key='a')
+        
+        # **Botón para enviar el formulario**
+        submit_button = st.form_submit_button(label='🚀 Realizar Predicción y Obtener Recomendaciones')
+
+    # Lógica principal del diagnóstico que se activa con el botón del formulario
+    if submit_button:
         if model:
             try:
+                # Diccionario con los datos del formulario
+                input_data = {
+                    'Número de Embarazos': pregnancies,
+                    'Nivel de Glucosa': glucose,
+                    'Presión Sanguínea Diastólica': diastolic,
+                    'Grosor del Pliegue Cutáneo': triceps,
+                    'Nivel de Insulina': insulin,
+                    'BMI': bmi,
+                    'Función de Pedigree': dpf,
+                    'Edad': age
+                }
+                
                 # Convierte los datos del diccionario a un array de numpy
                 input_features = np.array(list(input_data.values())).reshape(1, -1)
                 
@@ -150,7 +189,7 @@ else:
                             model="gpt-4.1",
                             messages=[{"role": "system", "content": "Eres un experto en nutrición y fitness."},
                                     {"role": "user", "content": prompt_text}],
-                            #max_tokens=500
+                            temperature=0.7
                         )
                         recommendations = response.choices[0].message.content
                         st.markdown(recommendations)
