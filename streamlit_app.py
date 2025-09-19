@@ -2,8 +2,6 @@ import streamlit as st
 import tensorflow as tf
 import numpy as np
 from openai import OpenAI
-import json
-import os
 
 # Carga el modelo de Keras previamente entrenado
 @st.cache_resource
@@ -22,42 +20,11 @@ model = load_model()
 st.title("Diagnóstico de Diabetes basado en IA")
 st.markdown("Este aplicativo usa una red neuronal para predecir si una persona tiene diabetes y luego genera recomendaciones personalizadas con la ayuda de un modelo de lenguaje avanzado.")
 
-# Interfaz para la entrada de datos
-st.sidebar.header("Parámetros del Paciente")
-
-def user_input_features():
-    """Recopila los parámetros de entrada del usuario."""
-    # Usamos st.columns para una mejor organización visual de los campos
-    col1, col2 = st.columns(2)
-    with col1:
-        pregnancies = st.slider('Embarazos', 0, 17, 3)
-        glucose = st.slider('Glucosa', 0, 200, 117)
-        diastolic = st.slider('Presión sanguínea diastólica', 0, 122, 72)
-        triceps = st.slider('Grosor del pliegue cutáneo del tríceps', 0, 99, 23)
-    with col2:
-        insulin = st.slider('Insulina', 0, 846, 30)
-        bmi = st.slider('Índice de Masa Corporal (BMI)', 0.0, 67.1, 32.0)
-        dpf = st.slider('Función de Pedigree de Diabetes', 0.078, 2.42, 0.3725)
-        age = st.slider('Edad', 21, 88, 29)
-    
-    data = {
-        'pregnancies': pregnancies,
-        'glucose': glucose,
-        'diastolic': diastolic,
-        'triceps': triceps,
-        'insulin': insulin,
-        'bmi': bmi,
-        'dpf': dpf,
-        'age': age
-    }
-    features = np.array(list(data.values())).reshape(1, -1)
-    return features, data
-
-# **<-- AHORA LOS SLIDERS ESTÁN FUERA DEL BOTÓN**
-st.header("Parámetros del Paciente")
-
 def get_user_input():
     """Recopila los parámetros de entrada del usuario."""
+    
+    # Interfaz para la entrada de datos
+    st.header("Parámetros del Paciente")
     col1, col2 = st.columns(2)
     with col1:
         pregnancies = st.slider('Embarazos', 0, 17, 3)
@@ -138,12 +105,15 @@ else:
                 st.header("Resultados del Diagnóstico")
                 st.markdown(f"El sistema ha clasificado a la persona como: **{diagnosis}**")
                 st.markdown(diagnosis_text)
+
+                # Formato de texto plano
+                data_string = "\n".join([f"{key}: {value}" for key, value in input_data.items()])
                 
                 # Lógica para la integración con GPT-4
                 if diagnosis == "Diabético":
                     prompt_text = f"""
                     El sistema de IA ha clasificado a un paciente como diabético. Sus parámetros son:
-                    {json.dumps(input_data, indent=2)}.
+                    {data_string}.
                     Como experto en nutrición y fitness, por favor, genera una guía práctica de alimentación y un plan de ejercicios personalizado, 
                     enfocados en el manejo de la diabetes para una persona con estas características. 
                     Considera una dieta baja en carbohidratos simples y azúcares, alta en fibra y proteínas, 
@@ -152,7 +122,7 @@ else:
                 else:
                     prompt_text = f"""
                     El sistema de IA ha clasificado a un paciente como no diabético, pero con los siguientes parámetros:
-                    {json.dumps(input_data, indent=2)}.
+                    {data_string}.
                     Como experto en nutrición y fitness, por favor, genera recomendaciones preventivas de alimentación y un plan de ejercicios generales para 
                     mantener una vida saludable y prevenir la diabetes en el futuro. Enfócate en una dieta balanceada y actividad física regular.
                     """
