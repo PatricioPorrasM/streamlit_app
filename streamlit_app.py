@@ -84,7 +84,7 @@ else:
         #st.header("Tipo de lenguaje")        
         selected_language = st.radio(
             "Tipo de lenguaje:",
-            ("Coloquial", "Formal")
+            ("Formal", "Coloquial")
         )
         
         st.markdown("---")
