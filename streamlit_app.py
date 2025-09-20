@@ -252,7 +252,7 @@ else:
                     step = "7"
                     response = client.chat.completions.create(
                         model="gpt-4.1",
-                        messages=[{"role": "system", "content": f"Eres un experto en nutrición y fitness. Toma en cuenta que el usuario vive en {location_text}. Usa un lenguaje {selected_language} en tus respuestas."},
+                        messages=[{"role": "system", "content": f"Eres un experto en nutrición y fitness. Toma en cuenta que el usuario vive en {location_text} para generar tus recomendaciones. Usa un lenguaje {selected_language} en tus respuestas y nombrar siempre el lugar donde vive el usuario."},
                                 {"role": "user", "content": prompt_text}],
                         temperature=0.7
                     )
