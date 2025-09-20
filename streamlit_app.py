@@ -67,15 +67,32 @@ else:
             st.markdown(message["content"])
 
     # ---
-    ## Checkboxes en la barra lateral
+    ## radiobutton en la barra lateral
     # El contenedor 'st.sidebar' ubica los elementos en el costado izquierdo de la página.
     with st.sidebar:
-        st.header("Modelos disponibles")
+        st.header("Personalizaciones")  
         
-        # Creamos un diccionario para almacenar el estado de cada checkbox.
-        opcion_seleccionada = st.radio(
-            "Elige tu opción:",
+        st.markdown("---")
+
+        selected_model = st.radio(
+            "Modelo predictor:",
             ("Red Neuronal Simple", "Ramdon Forest")
+        )
+
+        st.markdown("---")
+
+        #st.header("Tipo de lenguaje")        
+        selected_language = st.radio(
+            "Tipo de lenguaje:",
+            ("Coloquial", "Formal")
+        )
+        
+        st.markdown("---")
+
+        #st.header("Localización del paciente")        
+        selected_location = st.radio(
+            "Localización del paciente:",
+            ("Quito", "Santo Domingo", "Las Pampas")
         )
 
 
@@ -128,7 +145,7 @@ else:
         # Convierte los datos del diccionario a un array de numpy
         input_features = np.array(list(input_data.values())).reshape(1, -1)
 
-        if opcion_seleccionada == "Red Neuronal Simple":
+        if selected_model == "Red Neuronal Simple":
             if model_keras:
                 try:                    
                     # Normalización de los datos de entrada (AJUSTAR ESTO SEGÚN TU ENTRENAMIENTO)
@@ -141,10 +158,10 @@ else:
                     # Clasificación
                     if diagnosis_proba > 0.5:
                         is_diabetic = True
-                        diagnosis_text = ""
+                        diagnosis_text = f" con una probabilidad del **{diagnosis_proba * 100:.2f}%**."
                     else:
                         is_diabetic = False
-                        diagnosis_text = ""
+                        diagnosis_text = f" con una probabilidad del **{(1 - diagnosis_proba) * 100:.2f}%**."
                 
                 except Exception as e:
                     st.error(f"Ocurrió un error inesperado durante el procesamiento dela Red Neuronal Simple: {e}")
@@ -156,9 +173,8 @@ else:
                 try:
                     # Predicción con el modelo
                     prediction = model_rf.predict(input_features)
-                    print(prediction)
                     diagnosis_proba = prediction
-                    diagnosis_text = diagnosis_proba
+                    diagnosis_text = "."
                     # Clasificación
                     if diagnosis_proba > 0.5:
                         is_diabetic = True
@@ -180,11 +196,11 @@ else:
             if is_diabetic:
                 diagnosis = "Diabético"
                 #st.error(f"El sistema clasifica al paciente como **{diagnosis}** con una probabilidad del **{diagnosis_proba * 100:.2f}%**.")
-                st.error(f"El sistema clasifica al paciente como **{diagnosis}** con una probabilidad del **{diagnosis_text}%**.")
+                st.error(f"El sistema clasifica al paciente como **{diagnosis}**{diagnosis_text}")
             else:
                 diagnosis = "No Diabético"
                 #st.success(f"El sistema clasifica al paciente como **{diagnosis}** con una probabilidad del **{(1 - diagnosis_proba) * 100:.2f}%**.")
-                st.success(f"El sistema clasifica al paciente como **{diagnosis}** con una probabilidad del **{diagnosis_text}%**.")
+                st.success(f"El sistema clasifica al paciente como **{diagnosis}**{diagnosis_text}")
 
             step = "2"
             # Formato de texto para el prompt
@@ -193,11 +209,11 @@ else:
             step = "3"
             # **Sección de Recomendaciones**
             st.markdown("---")
-            st.markdown("## 📋 Recomendaciones Personalizadas (GPT-4.1)")
+            st.markdown(f"## 📋 Recomendaciones Personalizadas - Lenguaje {selected_language}")
             
             step = "4"
             # Lógica para la integración con GPT-4
-            if diagnosis == "Diabético":
+            if is_diabetic:
                 prompt_text = f"""
                 El sistema de IA ha clasificado a un paciente como diabético. Sus parámetros son:
                 {data_string}.
@@ -213,16 +229,30 @@ else:
                 Como experto en nutrición y fitness, por favor, genera recomendaciones preventivas de alimentación y un plan de ejercicios generales para 
                 mantener una vida saludable y prevenir la diabetes en el futuro. Enfócate en una dieta balanceada y actividad física regular.
                 """
+            
+            location_text = "Quito, capital del Ecuador"
+            location_describe = ""
+            
+            if selected_location == "Quito":
+                location_text = "Quito, capital del Ecuador"
+                location_describe = ""
+            elif selected_location == "Santo Domingo":
+                location_text = "Santo Domingo de los Colorados, Ecuador"
+                location_describe = ""
+            elif selected_location == "Las Pampas":
+                location_text = "Las Pampas, parroquia rural del canton Sigchos, provincia de Cotopaxi, Ecuador"
+                location_describe = ""
+
             step = "5"
             st.markdown("---")
-            st.header("Recomendaciones de GPT-4.1")
+            #st.header("Recomendaciones de GPT-4.1")
             step = "6"
             with st.spinner('Generando recomendaciones...'):
                 try:
                     step = "7"
                     response = client.chat.completions.create(
                         model="gpt-4.1",
-                        messages=[{"role": "system", "content": "Eres un experto en nutrición y fitness."},
+                        messages=[{"role": "system", "content": f"Eres un experto en nutrición y fitness. Toma en cuenta que el usuario vive en {location_text}. Usa un lenguaje {selected_language} en tus respuestas."},
                                 {"role": "user", "content": prompt_text}],
                         temperature=0.7
                     )
