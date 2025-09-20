@@ -2,6 +2,8 @@ import streamlit as st
 import tensorflow as tf
 import numpy as np
 from openai import OpenAI
+from sklearn.ensemble import RandomForestClassifier
+import joblib
 
 # Configuración de la página
 st.set_page_config(
@@ -11,16 +13,30 @@ st.set_page_config(
 
 # Carga el modelo de Keras previamente entrenado
 @st.cache_resource
-def load_model():
+def load_model_keras():
     """Carga el modelo de Keras en caché para evitar recargas."""
     try:
-        model = tf.keras.models.load_model('modelo_diabetes.keras')
-        return model
+        model_keras = tf.keras.models.load_model('modelo_diabetes.keras')
+        return model_keras
     except Exception as e:
         st.error(f"Error al cargar el modelo: {e}. Asegúrate de que 'modelo_diabetes.keras' esté en el mismo directorio.")
         return None
 
-model = load_model()
+# Carga el modelo de Random Forest previamente entrenado
+@st.cache_resource
+def load_model_rf():
+    """Carga el modelo de Random Forest en caché para evitar recargas."""
+    try:
+        # Cargar Random Forest
+        model_rf = joblib.load('random_forest_model.pkl')
+        return model_rf
+    except Exception as e:
+        st.error(f"Error al cargar el modelo: {e}. Asegúrate de que 'modelo_diabetes.keras' esté en el mismo directorio.")
+        return None
+
+
+model_keras = load_model_keras()
+model_rf = load_model_rf()
 
 # Título y descripción de la aplicación
 st.title("Diagnóstico de Diabetes basado en IA")
@@ -50,13 +66,25 @@ else:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
+    # ---
+    ## Checkboxes en la barra lateral
+    # El contenedor 'st.sidebar' ubica los elementos en el costado izquierdo de la página.
+    with st.sidebar:
+        st.header("Modelos disponibles")
+        
+        # Creamos un diccionario para almacenar el estado de cada checkbox.
+        opcion_seleccionada = st.radio(
+            "Elige tu opción:",
+            ("Red Neuronal Simple", "Ramdon Forest")
+        )
+
 
     # **Formulario principal de la aplicación**
     # El formulario agrupa los inputs y el botón, haciendo que se procesen juntos al enviar.
     with st.form(key="diabetes_form"):
         st.header("📝 Parámetros del Paciente")
         st.markdown("Ingrese los datos del paciente para realizar el diagnóstico.")
-
+        
         # Uso de columnas para organizar los inputs
         col1, col2, col3, col4 = st.columns(4)
 
@@ -79,89 +107,134 @@ else:
         # **Botón para enviar el formulario**
         submit_button = st.form_submit_button(label='🚀 Realizar Predicción y Obtener Recomendaciones')
 
+    is_diabetic = False
+    diagnosis_proba = 0.00
+    diagnosis_text = ""
+
     # Lógica principal del diagnóstico que se activa con el botón del formulario
     if submit_button:
-        if model:
-            try:
-                # Diccionario con los datos del formulario
-                input_data = {
-                    'Número de Embarazos': pregnancies,
-                    'Nivel de Glucosa': glucose,
-                    'Presión Sanguínea Diastólica': diastolic,
-                    'Grosor del Pliegue Cutáneo': triceps,
-                    'Nivel de Insulina': insulin,
-                    'BMI': bmi,
-                    'Función de Pedigree': dpf,
-                    'Edad': age
-                }
-                
-                # Convierte los datos del diccionario a un array de numpy
-                input_features = np.array(list(input_data.values())).reshape(1, -1)
-                
-                # Normalización de los datos de entrada (AJUSTAR ESTO SEGÚN TU ENTRENAMIENTO)
-                normalized_features = input_features / np.max(input_features) 
-                
-                # Predicción con el modelo
-                prediction = model.predict(normalized_features)
-                diagnosis_proba = prediction[0][0]
-                
-                # **Sección de Resultados**
-                st.markdown("## 📊 Resultados del Análisis")
-                st.markdown(f"**Análisis completado.**")
 
-                # Clasificación
-                if diagnosis_proba > 0.5:
-                    diagnosis = "Diabético"
-                    st.error(f"El sistema clasifica al paciente como **{diagnosis}** con una probabilidad del **{diagnosis_proba * 100:.2f}%**.")
-                else:
-                    diagnosis = "No Diabético"
-                    st.success(f"El sistema clasifica al paciente como **{diagnosis}** con una probabilidad del **{(1 - diagnosis_proba) * 100:.2f}%**.")
+        # Diccionario con los datos del formulario
+        input_data = {
+            'Número de Embarazos': pregnancies,
+            'Nivel de Glucosa': glucose,
+            'Presión Sanguínea Diastólica': diastolic,
+            'Grosor del Pliegue Cutáneo': triceps,
+            'Nivel de Insulina': insulin,
+            'BMI': bmi,
+            'Función de Pedigree': dpf,
+            'Edad': age
+        }
+        # Convierte los datos del diccionario a un array de numpy
+        input_features = np.array(list(input_data.values())).reshape(1, -1)
 
-                # Formato de texto para el prompt
-                data_string = "\n".join([f"{key}: {value}" for key, value in input_data.items()])
+        if opcion_seleccionada == "Red Neuronal Simple":
+            if model_keras:
+                try:                    
+                    # Normalización de los datos de entrada (AJUSTAR ESTO SEGÚN TU ENTRENAMIENTO)
+                    normalized_features = input_features / np.max(input_features) 
+                    
+                    # Predicción con el modelo
+                    prediction = model_keras.predict(normalized_features)
+                    diagnosis_proba = prediction[0][0]
+
+                    # Clasificación
+                    if diagnosis_proba > 0.5:
+                        is_diabetic = True
+                        diagnosis_text = ""
+                    else:
+                        is_diabetic = False
+                        diagnosis_text = ""
                 
-                # **Sección de Recomendaciones**
-                st.markdown("---")
-                st.markdown("## 📋 Recomendaciones Personalizadas (GPT-4.1)")
-                
-                # Lógica para la integración con GPT-4
-                if diagnosis == "Diabético":
-                    prompt_text = f"""
-                    El sistema de IA ha clasificado a un paciente como diabético. Sus parámetros son:
-                    {data_string}.
-                    Como experto en nutrición y fitness, por favor, genera una guía práctica de alimentación y un plan de ejercicios personalizado, 
-                    enfocados en el manejo de la diabetes para una persona con estas características. 
-                    Considera una dieta baja en carbohidratos simples y azúcares, alta en fibra y proteínas, 
-                    y un plan de ejercicios moderado que incluya cardio y fuerza.
-                    """
-                else:
-                    prompt_text = f"""
-                    El sistema de IA ha clasificado a un paciente como no diabético, pero con los siguientes parámetros:
-                    {data_string}.
-                    Como experto en nutrición y fitness, por favor, genera recomendaciones preventivas de alimentación y un plan de ejercicios generales para 
-                    mantener una vida saludable y prevenir la diabetes en el futuro. Enfócate en una dieta balanceada y actividad física regular.
-                    """
-                
-                st.markdown("---")
-                st.header("Recomendaciones de GPT-4.1")
-                
-                with st.spinner('Generando recomendaciones...'):
-                    try:
-                        response = client.chat.completions.create(
-                            model="gpt-4.1",
-                            messages=[{"role": "system", "content": "Eres un experto en nutrición y fitness."},
-                                    {"role": "user", "content": prompt_text}],
-                            temperature=0.7
-                        )
-                        recommendations = response.choices[0].message.content
-                        st.markdown(recommendations)
-                    except Exception as e:
+                except Exception as e:
+                    st.error(f"Ocurrió un error inesperado durante el procesamiento dela Red Neuronal Simple: {e}")
+            else:
+                st.warning("No se pudo cargar el modelo Red Neurnal Simple, no es posible realizar el diagnóstico.")
+
+        elif "Ramdon Forest":
+            if model_rf:
+                try:
+                    # Predicción con el modelo
+                    prediction = model_rf.predict(input_features)
+                    print(prediction)
+                    diagnosis_proba = prediction
+                    diagnosis_text = diagnosis_proba
+                    # Clasificación
+                    if diagnosis_proba > 0.5:
+                        is_diabetic = True
+                    else:
+                        is_diabetic = False
+                except Exception as e:
+                    st.error(f"Ocurrió un error inesperado durante el procesamiento de Randm Forest: {e}")
+            else:
+                st.warning("No se pudo cargar el modelo Random Forest, no es posible realizar el diagnóstico.")
+
+        # **Sección de Resultados**
+        st.markdown("## 📊 Resultados del Análisis")
+        st.markdown(f"**Análisis completado.**")
+
+        step = "0"
+        # Desplegar resultado
+        try:
+            step = "1"
+            if is_diabetic:
+                diagnosis = "Diabético"
+                #st.error(f"El sistema clasifica al paciente como **{diagnosis}** con una probabilidad del **{diagnosis_proba * 100:.2f}%**.")
+                st.error(f"El sistema clasifica al paciente como **{diagnosis}** con una probabilidad del **{diagnosis_text}%**.")
+            else:
+                diagnosis = "No Diabético"
+                #st.success(f"El sistema clasifica al paciente como **{diagnosis}** con una probabilidad del **{(1 - diagnosis_proba) * 100:.2f}%**.")
+                st.success(f"El sistema clasifica al paciente como **{diagnosis}** con una probabilidad del **{diagnosis_text}%**.")
+
+            step = "2"
+            # Formato de texto para el prompt
+            data_string = "\n".join([f"{key}: {value}" for key, value in input_data.items()])
+            
+            step = "3"
+            # **Sección de Recomendaciones**
+            st.markdown("---")
+            st.markdown("## 📋 Recomendaciones Personalizadas (GPT-4.1)")
+            
+            step = "4"
+            # Lógica para la integración con GPT-4
+            if diagnosis == "Diabético":
+                prompt_text = f"""
+                El sistema de IA ha clasificado a un paciente como diabético. Sus parámetros son:
+                {data_string}.
+                Como experto en nutrición y fitness, por favor, genera una guía práctica de alimentación y un plan de ejercicios personalizado, 
+                enfocados en el manejo de la diabetes para una persona con estas características. 
+                Considera una dieta baja en carbohidratos simples y azúcares, alta en fibra y proteínas, 
+                y un plan de ejercicios moderado que incluya cardio y fuerza.
+                """
+            else:
+                prompt_text = f"""
+                El sistema de IA ha clasificado a un paciente como no diabético, pero con los siguientes parámetros:
+                {data_string}.
+                Como experto en nutrición y fitness, por favor, genera recomendaciones preventivas de alimentación y un plan de ejercicios generales para 
+                mantener una vida saludable y prevenir la diabetes en el futuro. Enfócate en una dieta balanceada y actividad física regular.
+                """
+            step = "5"
+            st.markdown("---")
+            st.header("Recomendaciones de GPT-4.1")
+            step = "6"
+            with st.spinner('Generando recomendaciones...'):
+                try:
+                    step = "7"
+                    response = client.chat.completions.create(
+                        model="gpt-4.1",
+                        messages=[{"role": "system", "content": "Eres un experto en nutrición y fitness."},
+                                {"role": "user", "content": prompt_text}],
+                        temperature=0.7
+                    )
+                    step = "8"
+                    recommendations = response.choices[0].message.content
+                    st.markdown(recommendations)
+                except Exception as e:
                         st.error(f"Error al conectar con la API de GPT-4.1: {e}. Asegúrate de que tu clave de API esté configurada correctamente.")
-                
-            except Exception as e:
-                st.error(f"Ocurrió un error inesperado durante el procesamiento: {e}")
-        else:
-            st.warning("No se pudo cargar el modelo, no es posible realizar el diagnóstico.")
+                step = "9"
+        except Exception as e:
+            st.error(f"Ocurrió un error inesperado durante el procesamiento (paso {step}): {e}")
+        
 
 
 

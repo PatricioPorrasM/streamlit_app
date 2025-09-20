@@ -2,3 +2,5 @@ streamlit
 tensorflow
 numpy
 openai
+scikit-learn
+joblib
